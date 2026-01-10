@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>YouTube Subscriber Counter</title>
+  <link rel="stylesheet" href="/styles.css"/>
+
+  <!-- Add AdSense script AFTER approval (keep commented for now)
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js" crossorigin="anonymous"></script>
+  -->
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/contact.html">Contact</a>
+    </div>
+
+    <h1>YouTube Subscriber Counter</h1>
+    <p class="muted">
+      Search by channel name, <b>@handle</b>, channel URL, or paste a <b>video URL</b> (watch/shorts/youtu.be).
+    </p>
+
+    <input id="q" placeholder="e.g. @MrBeast or a YouTube video link" autocomplete="off"/>
+    <button id="btn">Show subscriber count</button>
+    <small>Tip: Press Enter to search.</small>
+
+    <div id="out" class="card" style="display:none;">
+      <div class="row">
+        <img id="thumb" class="thumb" alt="" style="display:none;"/>
+        <div>
+          <div id="title" class="title"></div>
+          <div class="muted" id="channelLink"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="muted">Subscribers</div>
+      <div class="big" id="subs"></div>
+      <div class="muted" id="note"></div>
+
+      <button id="refresh" style="margin-top:14px; background:#fff; color:#111;">Refresh</button>
+    </div>
+
+    <!-- Example ad slot location (activate after AdSense approval)
+    <div class="card" style="margin-top:16px;">
+      <div class="muted">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block"
+        data-ad-client="ca-pub-XXXXXXXXXXXX"
+        data-ad-slot="YYYYYYYYYY"
+        data-ad-format="auto"></ins>
+    </div>
+    -->
+
+    <div class="footer">
+      Counts are near real-time but YouTube may update with delays. Some channels hide subscriber counts.
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function formatNumber(n) {
+      if (n === "Hidden") return "Hidden";
+      const num = Number(n);
+      if (!Number.isFinite(num)) return String(n);
+      return num.toLocaleString();
+    }
+
+    async function loadCount() {
+      const query = $("q").value.trim();
+      if (!query) return;
+
+      $("btn").disabled = true;
+      $("btn").textContent = "Loading...";
+      $("out").style.display = "none";
+
+      try {
+        const res = await fetch(`/api/subscribers?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Request failed");
+
+        $("out").style.display = "block";
+        $("title").textContent = data.title || "Channel";
+        $("subs").textContent = formatNumber(data.subscribers);
+
+        if (data.thumbnail) {
+          $("thumb").src = data.thumbnail;
+          $("thumb").style.display = "block";
+        } else {
+          $("thumb").style.display = "none";
+        }
+
+        if (data.channelUrl) {
+          $("channelLink").innerHTML = `<a href="${data.channelUrl}" target="_blank" rel="noopener">Open channel</a>`;
+        } else {
+          $("channelLink").textContent = "";
+        }
+
+        $("note").textContent = data.subscribers === "Hidden"
+          ? "This channel hides subscriber count on YouTube."
+          : "Click Refresh for the latest.";
+
+      } catch (e) {
+        $("out").style.display = "block";
+        $("title").textContent = "Error";
+        $("subs").textContent = "";
+        $("channelLink").textContent = "";
+        $("thumb").style.display = "none";
+        $("note").textContent = e.message || String(e);
+      } finally {
+        $("btn").disabled = false;
+        $("btn").textContent = "Show subscriber count";
+      }
+    }
+
+    $("btn").addEventListener("click", loadCount);
+    $("refresh").addEventListener("click", loadCount);
+    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadCount(); });
+  </script>
+</body>
+</html>
